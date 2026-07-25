@@ -8,6 +8,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link href="./Fizzy&#39;s Butter Chiken — Yaar Let&#39;s Grab a Bite_files/css2" rel="stylesheet">
 
+<!-- EDIT: SUPABASE — reservation database connection.
+     Fill these in from your Supabase project (Settings -> API).
+     The anon/public key is safe to expose in client-side code. -->
+<script>
+  window.SUPABASE_URL = 'https://elwkampgqcvaouddjzrq.supabase.co';
+  window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsd2thbXBncWN2YW91ZGRqenJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NTM0MjgsImV4cCI6MjEwMDUyOTQyOH0.bd1SjqCT8nQLshpgHw2iiNoWEHtHXL6pIBPxkyVben0';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <!-- ==================================================================
      HOW TO USE THIS FILE — read this once before editing anything
      ==================================================================
@@ -383,14 +392,7 @@ footer .wrap{
 
 @media (max-width:660px){
   #desktop-view{ display:none; }
-  #mobile-view{ display:block; max-width:100vw; overflow-x:hidden; }
-  html, body{ overflow-x:hidden; max-width:100%; }
-
-  #mobile-view *{ min-width:0; }
-  #mobile-view .menu-item .name{ white-space:normal; word-break:break-word; }
-  #mobile-view .menu-cat-head h3{ white-space:normal; word-break:break-word; }
-  #mobile-view .menu-cat-head{ flex-wrap:wrap; }
-  #mobile-view .nav-cta{ white-space:normal; }
+  #mobile-view{ display:block; }
 
   #mobile-view .wrap { padding: 0 16px; }
   #mobile-view .hero { padding: 90px 0 60px; }
@@ -1713,13 +1715,31 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         if (!form.checkValidity()) { form.reportValidity(); return; }
         var data = new FormData(form);
-        var name = data.get('name'), date = data.get('date'), time = data.get('time'), party = data.get('party');
-        form.hidden = true;
-        confirmation.hidden = false;
-        confirmation.innerHTML =
-          '<h3>Request received, ' + escapeHtml(name) + '.</h3>' +
-          '<p>We\'ve noted a table for ' + escapeHtml(party) + ' on ' + escapeHtml(date) +
-          ' at ' + escapeHtml(time) + '. Our host stand will call or email you shortly to confirm.</p>';
+        var name = data.get('name'), email = data.get('email'), phone = data.get('phone'),
+            date = data.get('date'), time = data.get('time'), party = data.get('party'), notes = data.get('notes');
+
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
+
+        var supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        supabase.from('reservations').insert([{
+          name: name, email: email, phone: phone,
+          reservation_date: date, reservation_time: time,
+          guests: party, notes: notes
+        }]).then(function (result) {
+          if (result.error) {
+            console.error(result.error);
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Request Reservation'; }
+            alert('Sorry, something went wrong sending your request. Please call us instead.');
+            return;
+          }
+          form.hidden = true;
+          confirmation.hidden = false;
+          confirmation.innerHTML =
+            '<h3>Request received, ' + escapeHtml(name) + '.</h3>' +
+            '<p>We\'ve noted a table for ' + escapeHtml(party) + ' on ' + escapeHtml(date) +
+            ' at ' + escapeHtml(time) + '. Our host stand will call or email you shortly to confirm.</p>';
+        });
       });
     }
   }
